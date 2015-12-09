@@ -57,9 +57,7 @@ public class KClusteringParameters {
 	for (int i = 0; i < this.num_clusters; i++) {
 	    for (int j = 0; j < this.num_features; j++) {
 		this.cluster[i][j] = -1*dimension_size + (2*init_loc*i);
-		System.out.print(this.cluster[i][j] + " ");
 	    } 
-	    System.out.println();
 	}
 	this.assignment = new int[this.num_examples];
     }

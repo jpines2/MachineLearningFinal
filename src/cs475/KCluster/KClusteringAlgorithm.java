@@ -33,8 +33,10 @@ public class KClusteringAlgorithm {
 	System.out.println("Examples: " + parameters.numExamples());
         ArrayList<Instance> examples = parameters.getExamples();
         int[] init_assignment = this.init_assignments(examples);
+	System.out.println();
 	parameters.updateAssignment(init_assignment);
         for (int t = 0; t < iterations; t++) {
+	    reportClusterInformation();
 	    System.out.println("Iteration: " + (t+1));
 	    double[][] updated_cluster = this.calculateClusterMean(examples);
             boolean converged = this.hasConverged(updated_cluster);
