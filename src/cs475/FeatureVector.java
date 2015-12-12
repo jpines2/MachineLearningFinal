@@ -36,9 +36,14 @@ public class FeatureVector implements Serializable {
 		return this.maxIndex;
 	}
 	
-	public double[] toArrary()
+	public double[] toArray()
 	{
-		double[] array = new double[this.size()];
+		return toArray(this.size());
+	}
+	
+	public double[] toArray(int size)
+	{
+		double[] array = new double[size];
 		for (int i = 0; i < this.size(); i++)
 		{
 			array[i] = this.get(i);

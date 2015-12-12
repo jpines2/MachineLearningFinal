@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.Arrays;
 
 public class Network extends Predictor implements Serializable
 {
@@ -32,7 +33,8 @@ public class Network extends Predictor implements Serializable
 	{
 		for (int i = 0; i < this.numLayers - 1; i++)
 		{
-			a = sigmoid(Matrix.add1(Matrix.multiply(this.weights[i], a), this.biases[i]));
+			double[] b = Matrix.multiply(Matrix.transpose(this.weights[i]), a);
+			a = sigmoid(Matrix.add1(Matrix.multiply(Matrix.transpose(this.weights[i]), a), this.biases[i]));
 		}
 		return a;
 	}
@@ -52,7 +54,6 @@ public class Network extends Predictor implements Serializable
 			{
 				this.updateMiniBatch(miniBatch, this.eta);
 			}
-			//System.out.println("Epoch " + j + " complete");
 		}
 	}
 	
@@ -77,8 +78,8 @@ public class Network extends Predictor implements Serializable
 		double[][][] gradientsW = newWeightsMatrix(true);
 		
 		double y = Double.parseDouble(instance.getLabel().toString()); //TODO:
-		double[] activation = instance.getFeatureVector().toArrary();
-		double[][] activations = new double[this.numLayers - 1][];
+		double[] activation = instance.getFeatureVector().toArray(this.sizes[0]);
+		double[][] activations = new double[this.numLayers][];
 		activations[0] = activation;
 		double[][] zs = new double[this.numLayers - 1][];
 
@@ -93,15 +94,15 @@ public class Network extends Predictor implements Serializable
 		double[] delta = Matrix.elementwiseMultiply(this.costDerivative(activations[activations.length - 1], y), //TODO:
 				 						 			sigmoidPrime(zs[zs.length - 1]));
 		gradientsB[gradientsB.length - 1] = delta;
-		gradientsW[gradientsW.length - 1] = Matrix.vectorTransposeMultiply(delta, activations[activations.length - 2]);
+		gradientsW[gradientsW.length - 1] = Matrix.transpose(Matrix.vectorTransposeMultiply(delta, activations[activations.length - 2])); //TODO: remove transpose
 		for (int l = 2; l < this.numLayers; l++)
 		{
 			double[] z = zs[zs.length - l];
 			double sp[] = sigmoidPrime(z);
-			delta = Matrix.elementwiseMultiply(Matrix.multiply(Matrix.transpose(this.weights[this.weights.length-l+1]), delta),
+			delta = Matrix.elementwiseMultiply(Matrix.multiply(this.weights[this.weights.length-l+1], delta), //matrix.transpose
 											   sp);
 			gradientsB[gradientsB.length - l] = delta;
-			gradientsW[gradientsW.length - l] = Matrix.vectorTransposeMultiply(delta, activations[activations.length - l - 1]);
+			gradientsW[gradientsW.length - l] = Matrix.transpose(Matrix.vectorTransposeMultiply(delta, activations[activations.length - l - 1])); // vectortransposemultiply
 		}
 		Gradients gradients = new Gradients();
 		gradients.setGradients(gradientsB, gradientsW);
@@ -119,8 +120,8 @@ public class Network extends Predictor implements Serializable
 		double[][] matrix = new double[this.numLayers-1][];
 		for (int i = 0; i < this.numLayers - 1; i++)
 		{
-			matrix[i] = new double[this.sizes[i]];
-			for (int j = 0; j < this.sizes[i]; j++)
+			matrix[i] = new double[this.sizes[i+1]];
+			for (int j = 0; j < this.sizes[i+1]; j++)
 			{
 				if (zeros)
 				{
@@ -164,7 +165,7 @@ public class Network extends Predictor implements Serializable
 		int correct = 0;
 		for (int i = 0; i < testData.size(); i++)
 		{
-			double[] result = feedforward(testData.get(i).getFeatureVector().toArrary());
+			double[] result = feedforward(testData.get(i).getFeatureVector().toArray(this.sizes[0]));
 			if (result[0] == Double.parseDouble(testData.get(i).getLabel().toString())) //TODO:
 			{
 				correct += 1;
@@ -195,7 +196,7 @@ public class Network extends Predictor implements Serializable
 	
 	private double sigmoid(double z)
 	{
-		return (1.0 / 1.0 + Math.exp(-1.0 * z));
+		return (1.0 / (1.0 + Math.exp(-1.0 * z)));
 	}
 	
 	private double[] sigmoidPrime(double[] z)
@@ -220,8 +221,10 @@ public class Network extends Predictor implements Serializable
 
 	@Override
 	public Label predict(Instance instance) {
-		double[] a = instance.getFeatureVector().toArrary();
+		double[] a = instance.getFeatureVector().toArray(this.sizes[0]);
 		double[] result = feedforward(a);
+		System.out.println("result: " + result[0]);
+		System.out.println(instance.getLabel().toString());
 		return new RegressionLabel(result[0]); //TODO:
 	}
 }

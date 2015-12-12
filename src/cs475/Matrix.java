@@ -100,6 +100,8 @@ public class Matrix {
 	{
 		int m = m1.length;
 		int n = m1[0].length;
+//		System.out.println(m);
+//		System.out.println(n);
 		if (v.length != m) throw new RuntimeException("Illegal matrix dimension."); 
 		double[] product = new double[n];
 		for (int i = 0; i < n; i++)
@@ -116,6 +118,9 @@ public class Matrix {
 	{
 		int m = m1.length;
 		int n = m1[0].length;
+//		System.out.println("v1 length: " + v1.length);
+//		System.out.println("m: " + m);
+//		System.out.println("n: " + n);
 		if (v1.length != n) throw new RuntimeException("Illegal matrix dimension.");
 		double[] v2 = new double[m];
 		for (int i = 0; i < m; i++)
