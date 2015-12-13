@@ -5,6 +5,7 @@ import cs475.FeatureVector;
 
 import java.util.ArrayList;
 import java.util.Set;
+import java.util.Random;
 
 public class KClusteringAlgorithm {
 
@@ -25,19 +26,106 @@ public class KClusteringAlgorithm {
 	    cluster_count[ca] += 1;
 	} 
 	for (int i = 0; i < parameters.numClusters(); i++) {
-	    System.out.println("Number voxels in cluster " + (i+1) + ": " + cluster_count[i]);
+	    //System.out.println("Number voxels in cluster " + (i+1) + ": " + ((double)cluster_count[i]/parameters.numExamples()));
+	    System.out.print((double)cluster_count[i]/parameters.numExamples() + "\t");
 	}
+        System.out.println();
     }
 
-    public void cluster() {
-	System.out.println("Examples: " + parameters.numExamples());
+    private double[][] init_clusters(ArrayList<Instance> examples) { 
+        double[][] clusters = new double[parameters.numClusters()][parameters.numFeatures()];
+	Random candy = new Random(0);
+	int[] cluster_examples = new int[parameters.numClusters()];
+	for (int i = 0; i < cluster_examples.length; i++) {
+	    cluster_examples[i] = -1;
+	}
+	int init_center = candy.nextInt(parameters.numExamples());
+	cluster_examples[0] = init_center;
+	double[] prob_distribution;
+	for (int c = 1; c < parameters.numClusters(); c++) {
+	    prob_distribution = new double[parameters.numExamples()];
+	    for (int t = 0; t < parameters.numExamples(); t++) {
+		double[] point = examples.get(t).getFeatureVector().toArray();
+	        int min_cluster = -1;
+	        double min_distance = 1000.0;
+	        for (int j = 0; j < cluster_examples.length; j++) {
+		    if (cluster_examples[j] != -1) {
+		        FeatureVector fv = examples.get(cluster_examples[j]).getFeatureVector();
+		        double[] center = fv.toArray();
+		        double distance = 0.0;
+			for (int k = 0; k < parameters.numFeatures(); k++) {
+			    distance += this.euclidean_distance(point[k],center[k]);
+		        }
+			if (distance < min_distance) {
+			    min_distance = distance;
+			    min_cluster = j;
+			}
+		       
+		    }
+		}
+		if (min_distance == 0) {
+		    prob_distribution[t] = 0.0;
+		} else {
+		   // prob_distribution[t] = 1/(min_distance*min_distance);
+		   //prob_distribution[t] = (min_distance*min_distance);
+	           prob_distribution[t] = 1-(Math.exp(-1*min_distance*min_distance));
+		}
+	    }
+	    double normalizing_factor = 0.0;
+	    for (int i = 0; i < prob_distribution.length; i++) {
+	        normalizing_factor += prob_distribution[i];
+	    }
+	    double random = Math.random();
+	    //System.out.println("UF: " + random);
+	    double cumulative = 0.0;
+	    for (int i = 0; i < prob_distribution.length;i++) {
+		prob_distribution[i] /= normalizing_factor;
+	        cumulative += prob_distribution[i];
+		if (random <= cumulative) {
+		    //System.out.println("Example: " + i);
+		    cluster_examples[c] = i;
+		    break;
+		}	            
+	    }
+	
+	}
+	for (int i = 0; i < cluster_examples.length; i++) {
+	    int example = cluster_examples[i];
+	    double[] point = examples.get(example).getFeatureVector().toArray();
+	    for (int j = 0; j < parameters.numFeatures(); j++) {
+		clusters[i][j] = point[j];
+	    }
+	}
+	return clusters;
+    }
+		        
+    public void single_iteration(double[][] clusters) {
+        parameters.updateClusters(clusters);
         ArrayList<Instance> examples = parameters.getExamples();
         int[] init_assignment = this.init_assignments(examples);
-	System.out.println();
 	parameters.updateAssignment(init_assignment);
+    }
+	    
+    public void cluster() {
+	//System.out.println("Examples: " + parameters.numExamples());
+        ArrayList<Instance> examples = parameters.getExamples();
+	double[][] init_clusters = this.init_clusters(examples);
+	/*for (int i = 0; i < parameters.numClusters(); i++) {
+	    for (int j = 0; j < parameters.numFeatures();j++){
+		System.out.print(init_clusters[i][j] + " ");
+	    }
+	    System.out.println();
+	} */
+	parameters.updateClusters(init_clusters);
+        int[] init_assignment = this.init_assignments(examples);
+	parameters.updateAssignment(init_assignment);
+	if (iterations == -1) {
+	    iterations = 10000;
+	}
+	//System.out.println("Initial Report");
+	//reportClusterInformation();
         for (int t = 0; t < iterations; t++) {
-	    reportClusterInformation();
-	    System.out.println("Iteration: " + (t+1));
+	    //System.out.println("Iteration: " + (t+1));
 	    double[][] updated_cluster = this.calculateClusterMean(examples);
             boolean converged = this.hasConverged(updated_cluster);
 	    parameters.updateClusters(updated_cluster);
@@ -51,11 +139,10 @@ public class KClusteringAlgorithm {
 	    }
             parameters.updateAssignment(updated_assignment);
             if (converged) {
-                System.out.println("Has converged after: " + (t+1) + " iterations.");
+                //System.out.println("Has converged after: " + (t+1) + " iterations.");
 		break;
             }
 	}
-		    
     }
     private boolean hasConverged(double[][] updated_cluster) {
 	for (int i = 0; i < parameters.numClusters(); i++) {
@@ -77,7 +164,7 @@ public class KClusteringAlgorithm {
 	for (int i = 0; i < parameters.numExamples(); i++) {
 	    FeatureVector fv = examples.get(i).getFeatureVector();
 	    int ca = this.designateCluster(fv, i);
-	    assignments[ca] = 1;
+	    assignments[i] = ca;
 	}
 	return assignments;
     }
@@ -96,8 +183,13 @@ public class KClusteringAlgorithm {
 	
 	}
 	for (int i = 0; i < parameters.numClusters(); i++) {
+ 		
 	    for (int j = 0; j < parameters.numFeatures(); j++) {
-		updated_clusters[i][j] = (cluster_sum[i][j]/cluster_count[i]);
+		if (cluster_count[i] == 0) { 
+		    updated_clusters[i][j] = parameters.getClusterDimensionValue(i,j);
+		} else {
+		    updated_clusters[i][j] = (cluster_sum[i][j]/cluster_count[i]);
+	        }
 	     }
         }
         return updated_clusters;
@@ -125,7 +217,4 @@ public class KClusteringAlgorithm {
     private double euclidean_distance(double x, double y) {
 	return ((x-y)*(x-y));
     }
-
-
-
 }

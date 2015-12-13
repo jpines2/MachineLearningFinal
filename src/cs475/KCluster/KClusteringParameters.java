@@ -37,6 +37,7 @@ public class KClusteringParameters {
 	    String[] split_line = line.split(" ");
 	    this.num_features = split_line.length;
 	    for (int ii = 0; ii < split_line.length; ii++) {
+	        //System.out.println(split_line[ii]);
 	        String item = split_line[ii];
 	        String name = item.split(":")[0];
 		int index = Integer.parseInt(name);
@@ -47,20 +48,23 @@ public class KClusteringParameters {
 	    examples.add(instance);
 	}
 	this.num_examples = this.examples.size();
-	init_clusters();
+	//init_clusters();
+	this.cluster = new double[this.num_clusters][this.num_features];
+	this.assignment = new int[this.num_examples];
 	
     }
-    private void init_clusters() {
+    /*private void init_clusters() {
 	int dimension_size = 2;
 	double init_loc = (double) dimension_size / this.num_clusters;
 	this.cluster = new double[this.num_clusters][this.num_features];
+		    
 	for (int i = 0; i < this.num_clusters; i++) {
 	    for (int j = 0; j < this.num_features; j++) {
-		this.cluster[i][j] = -1*dimension_size + (2*init_loc*i);
-	    } 
+		this.cluster[i][j] = -1*dimension_size+(init_loc*i*2);
+	    }
 	}
 	this.assignment = new int[this.num_examples];
-    }
+    } */
  
     public int numExamples() {
 	return this.num_examples;
@@ -70,6 +74,9 @@ public class KClusteringParameters {
     }
     public int numFeatures() {
         return this.num_features;
+    }
+    public double[][] getClusters() {
+        return this.cluster;
     }
     public double getClusterDimensionValue(int cluster, int dimension) {
 	return this.cluster[cluster][dimension];
