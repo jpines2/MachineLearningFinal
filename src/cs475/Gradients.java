@@ -1,14 +1,14 @@
 package cs475;
 
 public class Gradients {
-	private double[][] gradientsB;
+	private double[][][] gradientsB;
 	private double[][][] gradientsW;
 	
 	public Gradients()
 	{
 	}
 	
-	public double[][] getGradientsB()
+	public double[][][] getGradientsB()
 	{
 		return this.gradientsB;
 	}
@@ -23,13 +23,13 @@ public class Gradients {
 		return this.gradientsW;
 	}
 	
-	public void setGradients(double[][] gradientsB, double[][][] gradientsW)
+	public void setGradients(double[][][] gradientsB, double[][][] gradientsW)
 	{
 		this.setGradientsB(gradientsB);
 		this.setGradientsW(gradientsW);
 	}
 	
-	public void setGradientsB(double[][] gradientsB)
+	public void setGradientsB(double[][][] gradientsB)
 	{
 		this.gradientsB = gradientsB;
 	}

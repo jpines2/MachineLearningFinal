@@ -8,6 +8,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -24,7 +26,7 @@ public class Classify {
 		CommandLineUtilities.initCommandLineParameters(args, Classify.options, manditory_args);
 	
 		String mode = CommandLineUtilities.getOptionValue("mode");
-		String data = CommandLineUtilities.getOptionValue("data");
+		String[] data = CommandLineUtilities.getOptionValues("data");
 		String predictions_file = CommandLineUtilities.getOptionValue("predictions_file");
 		String algorithm = CommandLineUtilities.getOptionValue("algorithm");
 		String model_file = CommandLineUtilities.getOptionValue("model_file");
@@ -38,6 +40,9 @@ public class Classify {
 		double pegasos_lambda = 1e-4;
 		if (CommandLineUtilities.hasArg("pegasos_lambda"))
 		    pegasos_lambda = CommandLineUtilities.getOptionValueAsFloat("pegasos_lambda");
+		int folds = 7;
+		if (CommandLineUtilities.hasArg("folds"))
+		    folds = CommandLineUtilities.getOptionValueAsInt("folds");
 		
 		if (mode.equalsIgnoreCase("train")) {
 			if (data == null || algorithm == null || model_file == null) {
@@ -67,7 +72,92 @@ public class Classify {
 			// Load the model.
 			Predictor predictor = (Predictor)loadObject(model_file);
 			evaluateAndSavePredictions(predictor, instances, predictions_file);
-		} else {
+		} else if (mode.equalsIgnoreCase("cross_validate")) {
+			if (data == null || predictions_file == null ||algorithm == null || model_file == null) {
+				System.out.println("Cross_validate requires the following arguments: data, algorithm, model_file, predictions_file");
+				System.exit(0);
+			}
+			
+			// Load the data.
+			DataReader data_reader = new DataReader(data, true);
+			List<Instance> instances = data_reader.readData();
+			data_reader.close();
+			
+			// Partition data.
+			Collections.shuffle(instances);
+			List<Instance>[] subsamples = (List<Instance>[]) new ArrayList[folds];
+			int subsampleSize = instances.size() / folds;
+			for (int i = 0; i < folds; i++)
+			{
+				subsamples[i] = new ArrayList<Instance>(instances.subList(i * subsampleSize, (i + 1) * subsampleSize));
+			}
+			
+			double totalAccuracy = 0.0;
+			for (int i = 0; i < subsamples.length; i++)
+			{
+				List<Instance> trainingInstances = new ArrayList<Instance>();
+				for (int j = 0; j < subsamples.length; j++)
+				{
+					if (i != j)
+					{
+						trainingInstances.addAll(subsamples[j]);
+					}
+				}
+				// Train the model.
+				Predictor predictor = train(instances, algorithm, sgd_iterations, sgd_eta0, pegasos_lambda);
+				// Test
+				totalAccuracy += evaluateAndSavePredictions(predictor, subsamples[i], predictions_file);
+			}
+			System.out.println("Accuracy: " + totalAccuracy / subsamples.length);
+		} else if (mode.equalsIgnoreCase("all")) {
+			String[] tumorFiles = new String[] {"m20330_supervised_dump.txt", "m30330_supervised_dump.txt", "m40329_supervised_dump.txt", "m40330_supervised_dump.txt", "m50329_supervised_dump.txt"};
+			String healthyFile = "Hm10_supervised_dump.txt";
+			for (int k = 0; k < tumorFiles.length; k++)
+			{
+				String[] datas = new String[] { "MachineLearningFinal/data/supervised/" + healthyFile, "MachineLearningFinal/data/supervised/" + tumorFiles[k]};
+				DataReader data_reader = new DataReader(datas, true);
+				List<Instance> instances = data_reader.readData();
+				data_reader.close();
+				
+				int numTrials = 20;
+				double[] accuracies = new double[25];
+				for (int l = 0; l < numTrials; l++)
+				{
+					// Partition data.
+					Collections.shuffle(instances);
+					List<Instance>[] subsamples = (List<Instance>[]) new ArrayList[folds];
+					int subsampleSize = instances.size() / folds;
+					for (int i = 0; i < folds; i++)
+					{
+						subsamples[i] = new ArrayList<Instance>(instances.subList(i * subsampleSize, (i + 1) * subsampleSize));
+					}
+					
+					double totalAccuracy = 0.0;
+					for (int i = 0; i < subsamples.length; i++)
+					{
+						List<Instance> trainingInstances = new ArrayList<Instance>();
+						for (int j = 0; j < subsamples.length; j++)
+						{
+							if (i != j)
+							{
+								trainingInstances.addAll(subsamples[j]);
+							}
+						}
+						// Train the model.
+						Predictor predictor = train(instances, algorithm, sgd_iterations, sgd_eta0, pegasos_lambda);
+						// Test
+						totalAccuracy += evaluateAndSavePredictions(predictor, subsamples[i], predictions_file);
+					}
+					//System.out.println("Accuracy: " + totalAccuracy / subsamples.length);
+					accuracies[l] = totalAccuracy / subsamples.length;
+				}
+				System.out.println("File: " + tumorFiles[k]);
+				System.out.println("Mean: " + mean(accuracies));
+				System.out.println("Variance: " + variance(accuracies));
+				System.out.println();
+			}
+		}
+		else {
 			System.out.println("Requires mode argument.");
 		}
 	}
@@ -76,27 +166,28 @@ public class Classify {
 	private static Predictor train(List<Instance> instances, String algorithm, int sgd_iterations, double sgd_eta0, double pegasos_lambda) {
 		// TODO Train the model using "algorithm" on "data"
 		Predictor predictor;
-		int[] sizes = new int[]{620, 30, 10, 1};
-		predictor = new Network(sizes, sgd_iterations, 10, sgd_eta0);
+		int[] sizes = new int[]{13, 10, 1};
+		predictor = new Network(sizes, sgd_iterations, 10 , sgd_eta0);
 		predictor.train(instances);
 		// TODO Evaluate the model
-		Evaluator evaluator = new AccuracyEvaluator();
-		System.out.println(evaluator.evaluate(instances, predictor));
+		//Evaluator evaluator = new AccuracyEvaluator();
+		//System.out.println(evaluator.evaluate(instances, predictor));
 		return predictor;
 	}
 
-	private static void evaluateAndSavePredictions(Predictor predictor,
+	private static double evaluateAndSavePredictions(Predictor predictor,
 			List<Instance> instances, String predictions_file) throws IOException {
 		PredictionsWriter writer = new PredictionsWriter(predictions_file);
 		// TODO Evaluate the model if labels are available. 
 		Evaluator evaluator = new AccuracyEvaluator();
-		evaluator.evaluate(instances, predictor);
+		double result = evaluator.evaluate(instances, predictor);
 		for (Instance instance : instances) {
 			Label label = predictor.predict(instance);
 			writer.writePrediction(label);
 		}
 		
 		writer.close();
+		return result;
 		
 	}
 
@@ -153,5 +244,26 @@ public class Classify {
 		registerOption("pegasos_lambda", "double", true, "The regularization parameter for Pegasos.");
 		
 		// Other options will be added here.
+	}
+	
+	private static double mean(double[] a)
+	{
+		double total = 0.0;
+		for (int i = 0; i < a.length; i++)
+		{
+			total += a[i];
+		}
+		return total / a.length;
+	}
+	
+	private static double variance(double[] a)
+	{
+		double mean = mean(a);
+		double total = 0.0;
+		for (int i = 0; i < a.length; i++)
+		{
+			total += (a[i] - mean) * (a[i] - mean);
+		}
+		return total / a.length;
 	}
 }

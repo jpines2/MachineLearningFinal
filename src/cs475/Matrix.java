@@ -51,6 +51,7 @@ public class Matrix {
 	
 	public static double[][] add2(double[][] m1, double[][] m2)
 	{
+		//System.out.println("lengths " + m1.length + " " + m1[0].length + "  " + m2.length + " " + m2[0].length);
 		return weightedAdd2(m1, 1, m2);
 	}
 	
@@ -146,8 +147,25 @@ public class Matrix {
 		return v3;
 	}
 	
+	public static double[][] elementwiseMultiply(double[][] m1, double[][] m2)
+	{
+		int m = m1.length;
+		int n = m2.length;
+		if (m != n) throw new RuntimeException("Illegal vector dimension.");
+		double[][] m3 = new double[m][m1[0].length];
+		for (int i = 0; i < m; i++)
+		{
+			for (int j = 0; j < m1[0].length; j++)
+			{
+				m3[i][j] = m1[i][j] * m2[i][j];
+			}
+		}
+		return m3;
+	}
+	
 	public static double[][] matrixMultiply(double[][] m1, double[][] m2)
 	{
+		//System.out.println("multiply lengths " + m1.length + " " + m1[0].length + "  " + m2.length + " " + m2[0].length);
 		if (m1[0].length != m2.length) throw new RuntimeException("Illegal matrix dimension.");
 		int m = m1.length;
 		int n = m2[0].length;
@@ -156,9 +174,10 @@ public class Matrix {
 		{
 			for (int j = 0; j < n; j++)
 			{
-				m3[i][j] = dot(getRow(m1, j), m2[i]);
+				m3[i][j] = dot(m1[i], getRow(m2, j));
 			}
 		}
+		
 		return m3;
 	}
 	
@@ -200,6 +219,21 @@ public class Matrix {
 			v[i] = m1[i][index];
 		}
 		return v;
+	}
+	
+	public static void print(double[][][] m1)
+	{
+		for (int i = 0; i < m1.length; i++)
+		{
+			for (int j = 0; j < m1[i].length; j++)
+			{
+				for (int k = 0; k < m1[i][j].length; k++)
+				{
+					System.out.print(m1[i][j][k] + " ");
+				}
+			}
+		}
+		System.out.println();
 	}
 	
 }

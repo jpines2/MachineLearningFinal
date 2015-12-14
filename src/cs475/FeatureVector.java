@@ -50,5 +50,15 @@ public class FeatureVector implements Serializable {
 		}
 		return array;
 	}
+	
+	public double[][] toMatrix(int size)
+	{
+		double[][] array = new double[size][1];
+		for (int i = 0; i < this.size(); i++)
+		{
+			array[i] = new double[] {this.get(i)};
+		}
+		return array;
+	}
 
 }
