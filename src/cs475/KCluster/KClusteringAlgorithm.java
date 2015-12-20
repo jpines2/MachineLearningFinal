@@ -19,27 +19,37 @@ public class KClusteringAlgorithm {
 	this.convergence = convergence;
     }
 
-    public void reportClusterInformation() {
+    public void reportClusterInformation(boolean testing) {
 	int[] cluster_count = new int[parameters.numClusters()];
 	for (int i = 0; i < parameters.numExamples(); i++) {
 	    int ca = parameters.getClusterAssignment(i);
 	    cluster_count[ca] += 1;
 	} 
 	for (int i = 0; i < parameters.numClusters(); i++) {
-	    //System.out.println("Number voxels in cluster " + (i+1) + ": " + ((double)cluster_count[i]/parameters.numExamples()));
-	    System.out.print((double)cluster_count[i]/parameters.numExamples() + "\t");
+	    if (!testing) {
+	        //System.err.println("Number voxels in cluster " + (i+1) + ": " + ((double)cluster_count[i]/parameters.numExamples()));
+	        int five = 0;
+	    } else {
+	        System.out.print((double)cluster_count[i]/parameters.numExamples() + "\t");
+	    }
 	}
-        System.out.println();
+	if (!testing) { int five = 1; }
+	else { System.out.println(); }
     }
 
-    private double[][] init_clusters(ArrayList<Instance> examples) { 
+    private double[][] init_clusters(ArrayList<Instance> examples, double alpha, int init_random) { 
         double[][] clusters = new double[parameters.numClusters()][parameters.numFeatures()];
 	Random candy = new Random(0);
 	int[] cluster_examples = new int[parameters.numClusters()];
 	for (int i = 0; i < cluster_examples.length; i++) {
 	    cluster_examples[i] = -1;
 	}
-	int init_center = candy.nextInt(parameters.numExamples());
+	int init_center;
+	if (init_random != 0) {	
+	    init_center = candy.nextInt(parameters.numExamples());
+	} else {
+	    init_center = 0;
+	}
 	cluster_examples[0] = init_center;
 	double[] prob_distribution;
 	for (int c = 1; c < parameters.numClusters(); c++) {
@@ -68,7 +78,7 @@ public class KClusteringAlgorithm {
 		} else {
 		   // prob_distribution[t] = 1/(min_distance*min_distance);
 		   //prob_distribution[t] = (min_distance*min_distance);
-	           prob_distribution[t] = 1-(Math.exp(-1*min_distance*min_distance));
+	           prob_distribution[t] = 1-(Math.exp(-alpha*min_distance*min_distance));
 		}
 	    }
 	    double normalizing_factor = 0.0;
@@ -106,10 +116,10 @@ public class KClusteringAlgorithm {
 	parameters.updateAssignment(init_assignment);
     }
 	    
-    public void cluster() {
+    public void cluster(double alpha, int random) {
 	//System.out.println("Examples: " + parameters.numExamples());
         ArrayList<Instance> examples = parameters.getExamples();
-	double[][] init_clusters = this.init_clusters(examples);
+	double[][] init_clusters = this.init_clusters(examples, alpha, random);
 	/*for (int i = 0; i < parameters.numClusters(); i++) {
 	    for (int j = 0; j < parameters.numFeatures();j++){
 		System.out.print(init_clusters[i][j] + " ");
@@ -122,8 +132,8 @@ public class KClusteringAlgorithm {
 	if (iterations == -1) {
 	    iterations = 10000;
 	}
-	//System.out.println("Initial Report");
-	//reportClusterInformation();
+	//System.err.println("Initial Report");
+	reportClusterInformation(false);
         for (int t = 0; t < iterations; t++) {
 	    //System.out.println("Iteration: " + (t+1));
 	    double[][] updated_cluster = this.calculateClusterMean(examples);

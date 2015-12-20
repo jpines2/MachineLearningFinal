@@ -32,14 +32,22 @@ public class KClusterTester {
                 if (CommandLineUtilities.hasArg("testing")) {
                     testing = CommandLineUtilities.getOptionValueAsInt("testing");
                 }
-		cluster(data_file, gd_iterations, convergence, num_clusters, testing);
+                double alpha = 1.0;
+                if (CommandLineUtilities.hasArg("alpha")) {
+		    alpha = CommandLineUtilities.getOptionValueAsFloat("alpha");
+		}
+	        int random = 0;
+	        if (CommandLineUtilities.hasArg("init_random")) {
+		    random = CommandLineUtilities.getOptionValueAsInt("init_random");
+		}
+		cluster(data_file, gd_iterations, convergence, num_clusters, testing, alpha, random);
 	}
 
-	public static void cluster(String data_file, int gd_iterations, double convergence, int num_clusters, int testing) throws FileNotFoundException {
+	public static void cluster(String data_file, int gd_iterations, double convergence, int num_clusters, int testing, double alpha, int random) throws FileNotFoundException {
 		KClusteringParameters parameters = new KClusteringParameters(data_file, num_clusters);
 		KClusteringAlgorithm kclustering = new KClusteringAlgorithm(parameters, gd_iterations, convergence);
-		kclustering.cluster();
-	        kclustering.reportClusterInformation();
+		kclustering.cluster(alpha, random);
+	        kclustering.reportClusterInformation(true);
                 if (testing == 0) { return; }
                 double[][] clusters = parameters.getClusters();
 		
@@ -68,10 +76,10 @@ public class KClusterTester {
                     k2 = new KClusteringAlgorithm(p2, 0, 0);
 
                     k2.single_iteration(clusters);
-                    k2.reportClusterInformation();
+                    k2.reportClusterInformation(true);
                 }
-                Scanner scan = new Scanner(System.in);
-                /*while (true) {
+                /*Scanner scan = new Scanner(System.in);
+                while (true) {
                     System.err.print("Do you want to assign clusters to another dataset? (input: y/n): ");
                     char usr = scan.next().charAt(0);
                     if (usr == 'n') {
@@ -103,6 +111,8 @@ public class KClusterTester {
 		registerOption("gd_iterations", "int", true, "The number of iterations.");
 		registerOption("clusters", "int", true, "The number of clusters for the algorithm");
                 registerOption("testing", "int", true, "Whether or not to use the clusters obtained from data as the assignmed clusters for other data sets");
+		registerOption("alpha", "double", true, "Controls the probability distribution over distance");
+		registerOption("init_random", "int", true, "Whether or not to randomely initialize first cluster");
 		// Other options will be added here.
 	}
 }
