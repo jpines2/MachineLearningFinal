@@ -21,15 +21,16 @@ public class Classify {
 	
 	public static void main(String[] args) throws IOException {
 		// Parse the command line.
-		String[] manditory_args = { "mode"};
+		String[] manditory_args = { "healthy_data", "tumor_data"};
 		createCommandLineOptions();
 		CommandLineUtilities.initCommandLineParameters(args, Classify.options, manditory_args);
 	
-		String mode = CommandLineUtilities.getOptionValue("mode");
-		String[] data = CommandLineUtilities.getOptionValues("data");
-		String predictions_file = CommandLineUtilities.getOptionValue("predictions_file");
-		String algorithm = CommandLineUtilities.getOptionValue("algorithm");
-		String model_file = CommandLineUtilities.getOptionValue("model_file");
+		String healthy_data = CommandLineUtilities.getOptionValue("healthy_data");
+		String[] tumor_data = CommandLineUtilities.getOptionValues("tumor_data");
+		//String predictions_file = CommandLineUtilities.getOptionValue("predictions_file");
+		//String model_file = CommandLineUtilities.getOptionValue("model_file");
+		String predictions_file = " ";
+		String model_file = " ";
 
 		int sgd_iterations = 30;
 		if (CommandLineUtilities.hasArg("sgd_iterations"))
@@ -43,127 +44,63 @@ public class Classify {
 		int folds = 7;
 		if (CommandLineUtilities.hasArg("folds"))
 		    folds = CommandLineUtilities.getOptionValueAsInt("folds");
-		
-		if (mode.equalsIgnoreCase("train")) {
-			if (data == null || algorithm == null || model_file == null) {
-				System.out.println("Train requires the following arguments: data, algorithm, model_file");
-				System.exit(0);
-			}
-			// Load the training data.
-			DataReader data_reader = new DataReader(data, true);
-			List<Instance> instances = data_reader.readData();
-			data_reader.close();
-			
-			// Train the model.
-			Predictor predictor = train(instances, algorithm, sgd_iterations, sgd_eta0, pegasos_lambda);
-			saveObject(predictor, model_file);		
-			
-		} else if (mode.equalsIgnoreCase("test")) {
-			if (data == null || predictions_file == null || model_file == null) {
-				System.out.println("Train requires the following arguments: data, predictions_file, model_file");
-				System.exit(0);
-			}
-			
-			// Load the test data.
-			DataReader data_reader = new DataReader(data, true);
-			List<Instance> instances = data_reader.readData();
-			data_reader.close();
-			
-			// Load the model.
-			Predictor predictor = (Predictor)loadObject(model_file);
-			evaluateAndSavePredictions(predictor, instances, predictions_file);
-		} else if (mode.equalsIgnoreCase("cross_validate")) {
-			if (data == null || predictions_file == null ||algorithm == null || model_file == null) {
-				System.out.println("Cross_validate requires the following arguments: data, algorithm, model_file, predictions_file");
-				System.exit(0);
-			}
-			
-			// Load the data.
-			DataReader data_reader = new DataReader(data, true);
-			List<Instance> instances = data_reader.readData();
-			data_reader.close();
-			
-			// Partition data.
-			Collections.shuffle(instances);
-			List<Instance>[] subsamples = (List<Instance>[]) new ArrayList[folds];
-			int subsampleSize = instances.size() / folds;
-			for (int i = 0; i < folds; i++)
-			{
-				subsamples[i] = new ArrayList<Instance>(instances.subList(i * subsampleSize, (i + 1) * subsampleSize));
-			}
-			
-			double totalAccuracy = 0.0;
-			for (int i = 0; i < subsamples.length; i++)
-			{
-				List<Instance> trainingInstances = new ArrayList<Instance>();
-				for (int j = 0; j < subsamples.length; j++)
-				{
-					if (i != j)
-					{
-						trainingInstances.addAll(subsamples[j]);
-					}
-				}
-				// Train the model.
-				Predictor predictor = train(instances, algorithm, sgd_iterations, sgd_eta0, pegasos_lambda);
-				// Test
-				totalAccuracy += evaluateAndSavePredictions(predictor, subsamples[i], predictions_file);
-			}
-			System.out.println("Accuracy: " + totalAccuracy / subsamples.length);
-		} else if (mode.equalsIgnoreCase("all")) {
-			String[] tumorFiles = new String[] {"m20330_supervised_dump.txt", "m30330_supervised_dump.txt", "m40329_supervised_dump.txt", "m40330_supervised_dump.txt", "m50329_supervised_dump.txt"};
-			String healthyFile = "Hm10_supervised_dump.txt";
-			for (int k = 0; k < tumorFiles.length; k++)
-			{
-				String[] datas = new String[] { "MachineLearningFinal/data/supervised/" + healthyFile, "MachineLearningFinal/data/supervised/" + tumorFiles[k]};
-				DataReader data_reader = new DataReader(datas, true);
-				List<Instance> instances = data_reader.readData();
-				data_reader.close();
-				
-				int numTrials = 20;
-				double[] accuracies = new double[25];
-				for (int l = 0; l < numTrials; l++)
-				{
-					// Partition data.
-					Collections.shuffle(instances);
-					List<Instance>[] subsamples = (List<Instance>[]) new ArrayList[folds];
-					int subsampleSize = instances.size() / folds;
-					for (int i = 0; i < folds; i++)
-					{
-						subsamples[i] = new ArrayList<Instance>(instances.subList(i * subsampleSize, (i + 1) * subsampleSize));
-					}
-					
-					double totalAccuracy = 0.0;
-					for (int i = 0; i < subsamples.length; i++)
-					{
-						List<Instance> trainingInstances = new ArrayList<Instance>();
-						for (int j = 0; j < subsamples.length; j++)
-						{
-							if (i != j)
-							{
-								trainingInstances.addAll(subsamples[j]);
-							}
-						}
-						// Train the model.
-						Predictor predictor = train(instances, algorithm, sgd_iterations, sgd_eta0, pegasos_lambda);
-						// Test
-						totalAccuracy += evaluateAndSavePredictions(predictor, subsamples[i], predictions_file);
-					}
-					//System.out.println("Accuracy: " + totalAccuracy / subsamples.length);
-					accuracies[l] = totalAccuracy / subsamples.length;
-				}
-				System.out.println("File: " + tumorFiles[k]);
-				System.out.println("Mean: " + mean(accuracies));
-				System.out.println("Variance: " + variance(accuracies));
-				System.out.println();
-			}
+		int num_trials = 20;
+		if (CommandLineUtilities.hasArg("num_trials")) {
+		    num_trials = CommandLineUtilities.getOptionValueAsInt("num_trials");
 		}
-		else {
-			System.out.println("Requires mode argument.");
+		
+		String[] tumorFiles = {"m50329_supervised_dump.txt"};
+		String healthyFile = "Hm10_supervised_dump.txt";
+		for (int k = 0; k < tumorFiles.length; k++)
+		{
+			String[] datas = new String[2];
+			datas[0] = healthy_data;
+			datas[1] = tumor_data[k];
+			DataReader data_reader = new DataReader(datas, true);
+			List<Instance> instances = data_reader.readData();
+			data_reader.close();
+			
+			double[] accuracies = new double[25];
+			for (int l = 0; l < num_trials; l++)
+			{
+				System.out.println("Trial #: " + (l+1));
+				// Partition data.
+				Collections.shuffle(instances);
+				List<Instance>[] subsamples = (List<Instance>[]) new ArrayList[folds];
+				int subsampleSize = instances.size() / folds;
+				for (int i = 0; i < folds; i++)
+				{
+					subsamples[i] = new ArrayList<Instance>(instances.subList(i * subsampleSize, (i + 1) * subsampleSize));
+				}
+		
+				double totalAccuracy = 0.0;
+				for (int i = 0; i < subsamples.length; i++)
+				{
+					List<Instance> trainingInstances = new ArrayList<Instance>();
+					for (int j = 0; j < subsamples.length; j++)
+					{
+						if (i != j)
+						{
+							trainingInstances.addAll(subsamples[j]);
+						}
+					}
+					// Train the model.
+					Predictor predictor = train(instances, sgd_iterations, sgd_eta0, pegasos_lambda);
+					// Test
+					totalAccuracy += evaluateAndSavePredictions(predictor, subsamples[i], predictions_file);
+				}
+				//System.out.println("Accuracy: " + totalAccuracy / subsamples.length);
+				accuracies[l] = totalAccuracy / subsamples.length;
+			}
+			System.out.println("File: " + tumorFiles[k]);
+			System.out.println("Mean: " + mean(accuracies));
+			System.out.println("Variance: " + variance(accuracies));
+			System.out.println();
 		}
 	}
 	
 
-	private static Predictor train(List<Instance> instances, String algorithm, int sgd_iterations, double sgd_eta0, double pegasos_lambda) {
+	private static Predictor train(List<Instance> instances, int sgd_iterations, double sgd_eta0, double pegasos_lambda) {
 		// TODO Train the model using "algorithm" on "data"
 		Predictor predictor;
 		int[] sizes = new int[]{13, 10, 1};
@@ -234,14 +171,13 @@ public class Classify {
 	}
 	
 	private static void createCommandLineOptions() {
-		registerOption("data", "String", true, "The data to use.");
-		registerOption("mode", "String", true, "Operating mode: train or test.");
-		registerOption("predictions_file", "String", true, "The predictions file to create.");
-		registerOption("algorithm", "String", true, "The name of the algorithm for training.");
-		registerOption("model_file", "String", true, "The name of the model file to create/load.");
+		registerOption("healthy_data", "String", true, "Healthy data to use.");
+		registerOption("tumor_data", "String", true, "Tumor data to use.");
+		//registerOption("predictions_file", "String", true, "The predictions file to create.");
+		//registerOption("model_file", "String", true, "The name of the model file to create/load.");
 		registerOption("sgd_eta0", "double", true, "The constant scalar for learning rate in AdaGrad.");
 		registerOption("sgd_iterations", "int", true, "The number of SGD iterations.");
-		registerOption("pegasos_lambda", "double", true, "The regularization parameter for Pegasos.");
+		registerOption("num_trials", "int", true, "number of tests to run");
 		
 		// Other options will be added here.
 	}
