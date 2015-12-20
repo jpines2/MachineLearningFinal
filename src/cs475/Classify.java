@@ -60,7 +60,7 @@ public class Classify {
 			List<Instance> instances = data_reader.readData();
 			data_reader.close();
 			
-			double[] accuracies = new double[25];
+			double[] accuracies = new double[num_trials];
 			for (int l = 0; l < num_trials; l++)
 			{
 				System.out.println("Trial #: " + (l+1));
@@ -93,8 +93,12 @@ public class Classify {
 				accuracies[l] = totalAccuracy / subsamples.length;
 			}
 			System.out.println("File: " + tumorFiles[k]);
-			System.out.println("Mean: " + mean(accuracies));
-			System.out.println("Variance: " + variance(accuracies));
+			if (accuracies.length > 1) { 
+			    System.out.println("Mean: " + mean(accuracies));
+			    System.out.println("Variance: " + variance(accuracies));
+			} else {
+			    System.out.println("Trial accuracy: " + accuracies[0]);
+			}
 			System.out.println();
 		}
 	}
